@@ -15,6 +15,11 @@ export async function POST(request: Request) {
   }
 
   try {
+    console.log("---INCOMING TOOL REQUEST---")
+    console.log("Chat Settings:", JSON.stringify(chatSettings, null, 2))
+    console.log("Messages:", JSON.stringify(messages, null, 2))
+    console.log("Selected Tools:", JSON.stringify(selectedTools, null, 2))
+
     const profile = await getServerProfile()
 
     checkApiKey(profile.openai_api_key, "OpenAI")
@@ -30,6 +35,7 @@ export async function POST(request: Request) {
 
     for (const selectedTool of selectedTools) {
       try {
+        console.log(`\n---PARSING TOOL: ${selectedTool.name}---`)
         const convertedSchema = await openapiToFunctions(
           JSON.parse(selectedTool.schema as string)
         )
@@ -46,19 +52,26 @@ export async function POST(request: Request) {
 
         allRouteMaps = { ...allRouteMaps, ...routeMap }
 
-        schemaDetails.push({
+        const newSchemaDetail = {
           title: convertedSchema.info.title,
           description: convertedSchema.info.description,
           url: convertedSchema.info.server,
           headers: selectedTool.custom_headers,
           routeMap,
           requestInBody: convertedSchema.routes[0].requestInBody
-        })
+        }
+
+        schemaDetails.push(newSchemaDetail)
+        console.log(
+          "Parsed Schema Details:",
+          JSON.stringify(newSchemaDetail, null, 2)
+        )
       } catch (error: any) {
         console.error("Error converting schema", error)
       }
     }
 
+    console.log("\n---MAKING 1ST LLM CALL FOR TOOL SELECTION---")
     const firstResponse = await openai.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
       messages,
@@ -66,6 +79,10 @@ export async function POST(request: Request) {
     })
 
     const message = firstResponse.choices[0].message
+    console.log(
+      "LLM Tool Selection Response:",
+      JSON.stringify(message, null, 2)
+    )
     messages.push(message)
     const toolCalls = message.tool_calls || []
 
@@ -83,6 +100,9 @@ export async function POST(request: Request) {
         const functionName = functionCall.name
         const argumentsString = toolCall.function.arguments.trim()
         const parsedArgs = JSON.parse(argumentsString)
+
+        console.log(`\n---EXECUTING TOOL: ${functionName}---`)
+        console.log("Arguments:", JSON.stringify(parsedArgs, null, 2))
 
         // Find the schema detail that contains the function name
         const schemaDetail = schemaDetails.find(detail =>
@@ -150,7 +170,13 @@ export async function POST(request: Request) {
             body: JSON.stringify(bodyContent) // Use the extracted requestBody or the entire parsedArgs
           }
 
+          console.log("\n---MAKING EXTERNAL API CALL (POST)---")
+          console.log("URL:", fullUrl)
+          console.log("Request Init:", JSON.stringify(requestInit, null, 2))
+
           const response = await fetch(fullUrl, requestInit)
+
+          console.log("External API Response Status:", response.status)
 
           if (!response.ok) {
             data = {
@@ -175,10 +201,16 @@ export async function POST(request: Request) {
             headers = JSON.parse(customHeaders)
           }
 
+          console.log("\n---MAKING EXTERNAL API CALL (GET)---")
+          console.log("URL:", fullUrl)
+          console.log("Headers:", JSON.stringify(headers, null, 2))
+
           const response = await fetch(fullUrl, {
             method: "GET",
             headers: headers
           })
+
+          console.log("External API Response Status:", response.status)
 
           if (!response.ok) {
             data = {
@@ -189,6 +221,8 @@ export async function POST(request: Request) {
           }
         }
 
+        console.log("Data from external API:", JSON.stringify(data, null, 2))
+
         messages.push({
           tool_call_id: toolCall.id,
           role: "tool",
@@ -198,6 +232,7 @@ export async function POST(request: Request) {
       }
     }
 
+    console.log("\n---MAKING 2ND LLM CALL FOR FINAL RESPONSE---")
     const secondResponse = await openai.chat.completions.create({
       model: chatSettings.model as ChatCompletionCreateParamsBase["model"],
       messages,
@@ -208,7 +243,7 @@ export async function POST(request: Request) {
 
     return new StreamingTextResponse(stream)
   } catch (error: any) {
-    console.error(error)
+    console.error("---TOOL CALLING ERROR---", error)
     const errorMessage = error.error?.message || "An unexpected error occurred"
     const errorCode = error.status || 500
     return new Response(JSON.stringify({ message: errorMessage }), {

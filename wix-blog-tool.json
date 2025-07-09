@@ -1,0 +1,247 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Wix Blog API",
+    "description": "A tool to create and publish blog posts on a Wix site. Requires a site member ID for authorship.",
+    "version": "1.3.0"
+  },
+  "servers": [
+    {
+      "url": "https://www.wixapis.com/blog/v3"
+    }
+  ],
+  "paths": {
+    "/draft-posts": {
+      "post": {
+        "summary": "Create a new draft post",
+        "description": "Creates a new blog post as a draft. Requires the ID of a valid site member to act as the author. The `wix-site-id` must be provided in the tool's custom headers.",
+        "operationId": "createDraftPost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "draftPost": {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "description": "The title of the blog post."
+                      },
+                      "richContent": {
+                        "type": "object",
+                        "description": "The content of the post in Wix's richContent format. The LLM must construct this exact object structure for the body of the post. The `type` properties for nodes must be uppercase, e.g., 'PARAGRAPH' or 'TEXT'.",
+                        "properties": {
+                          "nodes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string",
+                                  "description": "The type of node. Must be uppercase. For example: 'PARAGRAPH'",
+                                  "example": "PARAGRAPH"
+                                },
+                                "id": {
+                                  "type": "string"
+                                },
+                                "nodes": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "description": "The type of node. Must be uppercase. For example: 'TEXT'",
+                                        "example": "TEXT"
+                                      },
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "nodes": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "textData": {
+                                        "type": "object",
+                                        "properties": {
+                                          "text": {
+                                            "type": "string",
+                                            "description": "The actual text content of the node."
+                                          },
+                                          "decorations": {
+                                            "type": "array",
+                                            "description": "An array of decoration objects for text formatting. To make text bold, add `{\"type\": \"BOLD\"}`.",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "type": {
+                                                  "type": "string",
+                                                  "example": "BOLD"
+                                                }
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "text"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "textData"
+                                    ]
+                                  }
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "nodes"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "nodes"
+                        ]
+                      },
+                      "memberId": {
+                        "type": "string",
+                        "description": "The ID of the Wix site member who will be the author of the post. This is a required field."
+                      }
+                    },
+                    "required": [
+                      "title",
+                      "richContent",
+                      "memberId"
+                    ]
+                  }
+                },
+                "required": [
+                  "draftPost"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Draft post created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "draftPost": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/draft-posts/{postId}/publish": {
+      "post": {
+        "summary": "Publish a draft post",
+        "description": "Publishes an existing draft post by its ID, making it live on the blog.",
+        "operationId": "publishDraftPost",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The unique identifier of the draft post to publish."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Draft post published successfully."
+          }
+        }
+      }
+    },
+    "/members/v1/members/query": {
+      "post": {
+        "summary": "Query for a site member",
+        "description": "Finds a site member by their email address to retrieve their member ID.",
+        "operationId": "queryMembers",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "object",
+                    "properties": {
+                      "filter": {
+                        "type": "object",
+                        "description": "A filter object. To find a member by email, use a format like: {\"loginEmail\": \"user@example.com\"}"
+                      }
+                    },
+                    "required": ["filter"]
+                  }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member query successful.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "The unique ID of the member."
+                          },
+                          "contactId": {
+                            "type": "string"
+                          },
+                          "profile": {
+                            "type": "object",
+                            "properties": {
+                              "nickname": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+} 
