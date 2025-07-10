@@ -1,16 +1,23 @@
 {
   "name": "chatbot-ui",
   "version": "2.0.0",
+  "description": "The open-source AI chat app for everyone.",
+  "author": "Chatbot UI",
   "private": true,
+  "main": "main.js",
   "scripts": {
-    "chat": "supabase start && npm run db-types && npm run dev",
+    "dev": "concurrently \"npm:dev:next\" \"npm:dev:electron\"",
+    "dev:next": "npm run chat",
+    "dev:electron": "wait-on http://localhost:3000 && electron .",
+    "build": "next build",
+    "start": "next start",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "chat": "supabase start && npm run db-types && next dev",
     "restart": "supabase stop && npm run chat",
     "update": "git pull origin main && npm run db-migrate && npm run db-types",
     "prepare": "husky install",
     "clean": "npm run lint:fix && npm run format:write",
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "analyze": "ANALYZE=true npm run build",
@@ -24,6 +31,25 @@
     "db-pull": "supabase db remote commit",
     "db-push": "supabase db push",
     "test": "jest"
+  },
+  "build": {
+    "appId": "com.chatbotui.app",
+    "productName": "Chatbot UI",
+    "files": [
+      "!.next/cache",
+      ".next/**/*",
+      "node_modules",
+      "public",
+      "package.json",
+      "main.js",
+      "supabase"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.18.0",
@@ -111,6 +137,10 @@
     "@types/uuid": "^9.0.7",
     "autoprefixer": "^10.4.16",
     "clsx": "^2.0.0",
+    "concurrently": "^8.2.2",
+    "electron": "^28.2.4",
+    "electron-builder": "^24.9.1",
+    "electron-is-dev": "^3.0.1",
     "eslint": "^8",
     "eslint-config-next": "^14.0.2",
     "eslint-config-prettier": "^9.1.0",
@@ -124,6 +154,7 @@
     "tailwindcss": "^3.3.5",
     "tailwindcss-animate": "^1.0.7",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^7.2.0"
   }
 }

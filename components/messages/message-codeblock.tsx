@@ -58,11 +58,8 @@ export const MessageCodeBlock: FC<MessageCodeBlockProps> = memo(
         return
       }
       const fileExtension = programmingLanguages[language] || ".file"
-      const suggestedFileName = `file-${generateRandomString(
-        3,
-        true
-      )}${fileExtension}`
-      const fileName = window.prompt("Enter file name" || "", suggestedFileName)
+      const suggestedFileName = `code-snippet${fileExtension}`
+      const fileName = window.prompt("Enter file name", suggestedFileName)
 
       if (!fileName) {
         return

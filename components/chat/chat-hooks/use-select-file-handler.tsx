@@ -59,13 +59,13 @@ export const useSelectFileHandler = () => {
       if (file.type.includes("image")) {
         reader.readAsDataURL(file)
       } else if (ACCEPTED_FILE_TYPES.split(",").includes(file.type)) {
-        if (simplifiedFileType.includes("vnd.adobe.pdf")) {
+        if (file.type.includes("pdf")) {
           simplifiedFileType = "pdf"
         } else if (
-          simplifiedFileType.includes(
-            "vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-              "docx"
-          )
+          file.type.includes(
+            "vnd.openxmlformats-officedocument.wordprocessingml.document"
+          ) ||
+          file.type.includes("docx")
         ) {
           simplifiedFileType = "docx"
         }
@@ -80,60 +80,12 @@ export const useSelectFileHandler = () => {
           }
         ])
 
-        // Handle docx files
-        if (
-          file.type.includes(
-            "vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-              "docx"
-          )
-        ) {
-          const arrayBuffer = await file.arrayBuffer()
-          const result = await mammoth.extractRawText({
-            arrayBuffer
-          })
-
-          const createdFile = await createDocXFile(
-            result.value,
-            file,
-            {
-              user_id: profile.user_id,
-              description: "",
-              file_path: "",
-              name: file.name,
-              size: file.size,
-              tokens: 0,
-              type: simplifiedFileType
-            },
-            selectedWorkspace.id,
-            chatSettings.embeddingsProvider
-          )
-
-          setFiles(prev => [...prev, createdFile])
-
-          setNewMessageFiles(prev =>
-            prev.map(item =>
-              item.id === "loading"
-                ? {
-                    id: createdFile.id,
-                    name: createdFile.name,
-                    type: createdFile.type,
-                    file: file
-                  }
-                : item
-            )
-          )
-
-          reader.onloadend = null
-
-          return
-        } else {
-          // Use readAsArrayBuffer for PDFs and readAsText for other types
-          file.type.includes("pdf")
-            ? reader.readAsArrayBuffer(file)
-            : reader.readAsText(file)
-        }
+        // Use readAsArrayBuffer for PDFs and readAsText for other types
+        file.type.includes("pdf")
+          ? reader.readAsArrayBuffer(file)
+          : reader.readAsText(file)
       } else {
-        throw new Error("Unsupported file type")
+        toast.error("Unsupported file type")
       }
 
       reader.onloadend = async function () {
